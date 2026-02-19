@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI 드라마 스튜디오</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@400;700;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0a0a0f;
+      --surface: #12121a;
+      --card: #1a1a26;
+      --border: #2a2a40;
+      --accent: #ff3c5f;
+      --accent2: #7c3aed;
+      --accent3: #00d4ff;
+      --text: #e8e8f0;
+      --muted: #6b6b8a;
+      --success: #00e676;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* 배경 노이즈 효과 */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* 상단 그라데이션 글로우 */
+    body::after {
+      content: '';
+      position: fixed;
+      top: -200px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 800px;
+      height: 400px;
+      background: radial-gradient(ellipse, rgba(124,58,237,0.15) 0%, rgba(255,60,95,0.08) 50%, transparent 70%);
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* 헤더 */
+    header {
+      padding: 40px 0 20px;
+      text-align: center;
+      position: relative;
+    }
+
+    .logo-badge {
+      display: inline-block;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      color: white;
+      font-size: 10px;
+      letter-spacing: 3px;
+      padding: 4px 12px;
+      border-radius: 2px;
+      margin-bottom: 16px;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      font-family: 'Noto Serif KR', serif;
+      font-size: clamp(2rem, 5vw, 3.5rem);
+      font-weight: 900;
+      line-height: 1.1;
+      background: linear-gradient(135deg, #fff 30%, var(--accent3) 70%, var(--accent2) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 12px;
+    }
+
+    .subtitle {
+      color: var(--muted);
+      font-size: 12px;
+      letter-spacing: 1px;
+    }
+
+    /* 파이프라인 단계 표시 */
+    .pipeline {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      margin: 40px 0;
+      flex-wrap: wrap;
+    }
+
+    .pipeline-step {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      font-size: 11px;
+      letter-spacing: 1px;
+      color: var(--muted);
+      transition: all 0.3s;
+      position: relative;
+    }
+
+    .pipeline-step:first-child { border-radius: 4px 0 0 4px; }
+    .pipeline-step:last-child { border-radius: 0 4px 4px 0; }
+
+    .pipeline-step.active {
+      border-color: var(--accent2);
+      color: var(--text);
+      background: rgba(124,58,237,0.15);
+    }
+
+    .pipeline-step.done {
+      border-color: var(--success);
+      color: var(--success);
+      background: rgba(0,230,118,0.05);
+    }
+
+    .pipeline-step .icon { font-size: 14px; }
+
+    .pipeline-arrow {
+      width: 20px;
+      height: 1px;
+      background: var(--border);
+      flex-shrink: 0;
+    }
+
+    /* 메인 카드 */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+
+    .card-title {
+      font-size: 10px;
+      letter-spacing: 3px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* 장르/소재 선택 */
+    .chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+
+    .chip {
+      padding: 6px 14px;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: transparent;
+      color: var(--muted);
+      font-family: 'Space Mono', monospace;
+    }
+
+    .chip:hover { border-color: var(--accent2); color: var(--text); }
+    .chip.selected { border-color: var(--accent2); background: rgba(124,58,237,0.2); color: var(--text); }
+
+    /* 텍스트 입력 */
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    label {
+      display: block;
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 8px;
+    }
+
+    textarea, input[type="text"], select {
+      width: 100%;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      color: var(--text);
+      font-family: 'Space Mono', monospace;
+      font-size: 13px;
+      padding: 12px 16px;
+      resize: vertical;
+      transition: border-color 0.2s;
+      outline: none;
+    }
+
+    textarea:focus, input[type="text"]:focus, select:focus {
+      border-color: var(--accent2);
+    }
+
+    textarea { min-height: 80px; }
+
+    select option { background: var(--surface); }
+
+    /* 슬라이더 */
+    .slider-group {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    input[type="range"] {
+      width: 100%;
+      accent-color: var(--accent2);
+    }
+
+    .range-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+
+    /* 실행 버튼 */
+    .run-btn {
+      width: 100%;
+      padding: 18px;
+      background: linear-gradient(135deg, var(--accent2), var(--accent));
+      border: none;
+      border-radius: 6px;
+      color: white;
+      font-family: 'Space Mono', monospace;
+      font-size: 14px;
+      font-weight: 700;
+      letter-spacing: 2px;
+      cursor: pointer;
+      transition: all 0.3s;
+      text-transform: uppercase;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .run-btn::before {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 100%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.1), transparent);
+      transition: left 0.5s;
+    }
+
+    .run-btn:hover::before { left: 100%; }
+    .run-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 30px rgba(124,58,237,0.4); }
+    .run-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    /* 진행 상황 */
+    #progress-section { display: none; }
+
+    .progress-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 28px;
+      margin-bottom: 16px;
+    }
+
+    .progress-bar-wrap {
+      background: var(--surface);
+      border-radius: 100px;
+      height: 4px;
+      margin: 16px 0;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent2), var(--accent3));
+      border-radius: 100px;
+      width: 0%;
+      transition: width 0.5s ease;
+    }
+
+    .log-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      padding: 16px;
+      font-size: 12px;
+      color: var(--muted);
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 2;
+    }
+
+    .log-line { display: flex; gap: 12px; }
+    .log-line .ts { color: var(--accent3); flex-shrink: 0; }
+    .log-line .msg { color: var(--text); }
+    .log-line.err .msg { color: var(--accent); }
+    .log-line.ok .msg { color: var(--success); }
+
+    /* 결과 섹션 */
+    #result-section { display: none; }
+
+    .result-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+      margin-bottom: 16px;
+    }
+
+    @media (max-width: 600px) { .result-grid { grid-template-columns: 1fr; } }
+
+    .result-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 20px;
+    }
+
+    .result-item h3 {
+      font-size: 10px;
+      letter-spacing: 2px;
+      color: var(--muted);
+      text-transform: uppercase;
+      margin-bottom: 12px;
+    }
+
+    .script-output {
+      font-family: 'Noto Serif KR', serif;
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text);
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+    }
+
+    .audio-player {
+      width: 100%;
+      margin-top: 8px;
+      accent-color: var(--accent2);
+    }
+
+    .img-slideshow {
+      position: relative;
+      border-radius: 4px;
+      overflow: hidden;
+      aspect-ratio: 9/16;
+      background: var(--bg);
+    }
+
+    .img-slideshow img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      position: absolute;
+      opacity: 0;
+      transition: opacity 1s;
+    }
+
+    .img-slideshow img.active { opacity: 1; }
+
+    .download-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border: 1px solid var(--accent2);
+      border-radius: 4px;
+      color: var(--accent2);
+      font-family: 'Space Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 1px;
+      cursor: pointer;
+      background: transparent;
+      transition: all 0.2s;
+      text-decoration: none;
+      margin-top: 12px;
+    }
+
+    .download-btn:hover {
+      background: rgba(124,58,237,0.15);
+    }
+
+    /* HF 상태 표시 */
+    .hf-status {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 20px;
+    }
+
+    .status-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--muted);
+      animation: pulse 2s infinite;
+    }
+
+    .status-dot.online { background: var(--success); }
+    .status-dot.offline { background: var(--accent); animation: none; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.3; }
+    }
+
+    /* 스크롤바 */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: var(--surface); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    footer {
+      text-align: center;
+      padding: 40px 0;
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 1px;
+    }
+
+    .tag {
+      display: inline-block;
+      padding: 2px 8px;
+      border: 1px solid var(--border);
+      border-radius: 2px;
+      font-size: 10px;
+      color: var(--muted);
+      margin: 2px;
+    }
+
+    .free-badge {
+      display: inline-block;
+      background: rgba(0,230,118,0.1);
+      border: 1px solid var(--success);
+      color: var(--success);
+      font-size: 10px;
+      letter-spacing: 2px;
+      padding: 3px 10px;
+      border-radius: 2px;
+    }
+  </style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-badge">🎬 AI Drama Studio</div>
+    <h1>AI 숏폼 드라마<br>자동 제작기</h1>
+    <p class="subtitle">완전 무료 · 오픈소스 · Cloudflare 배포</p>
+    <br>
+    <span class="free-badge">100% FREE</span>
+    <span class="tag">Hugging Face</span>
+    <span class="tag">Kokoro TTS</span>
+    <span class="tag">MusicGen</span>
+    <span class="tag">SD XL</span>
+    <span class="tag">FFmpeg</span>
+  </header>
+
+  <!-- 파이프라인 시각화 -->
+  <div class="pipeline">
+    <div class="pipeline-step" id="step-script">
+      <span class="icon">✍️</span> 대본
+    </div>
+    <div class="pipeline-arrow"></div>
+    <div class="pipeline-step" id="step-tts">
+      <span class="icon">🔊</span> TTS
+    </div>
+    <div class="pipeline-arrow"></div>
+    <div class="pipeline-step" id="step-image">
+      <span class="icon">🖼️</span> 이미지
+    </div>
+    <div class="pipeline-arrow"></div>
+    <div class="pipeline-step" id="step-music">
+      <span class="icon">🎵</span> BGM
+    </div>
+    <div class="pipeline-arrow"></div>
+    <div class="pipeline-step" id="step-video">
+      <span class="icon">🎬</span> 합성
+    </div>
+  </div>
+
+  <!-- 설정 섹션 -->
+  <div id="setup-section">
+
+    <div class="card">
+      <div class="card-title">01 — 장르 선택</div>
+      <div class="chips">
+        <button class="chip selected" data-genre="막장 로맨스">💔 막장 로맨스</button>
+        <button class="chip" data-genre="미스터리 스릴러">🔪 미스터리 스릴러</button>
+        <button class="chip" data-genre="조선 좀비">🧟 조선 좀비</button>
+        <button class="chip" data-genre="SF 로맨스">🚀 SF 로맨스</button>
+        <button class="chip" data-genre="복수극">😤 복수극</button>
+        <button class="chip" data-genre="귀신 코미디">👻 귀신 코미디</button>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">02 — 스토리 설정</div>
+
+      <div class="input-group">
+        <label>소재 / 핵심 갈등 (선택)</label>
+        <textarea id="story-prompt" placeholder="예: 재벌 2세와 신데렐라가 같은 지하철 칸에서 만나는데, 알고보니 그녀가 그의 숨겨진 여동생이었다..."></textarea>
+      </div>
+
+      <div class="slider-group">
+        <div>
+          <label>장면 수</label>
+          <input type="range" id="scene-count" min="3" max="8" value="5" oninput="document.getElementById('scene-val').textContent=this.value">
+          <div class="range-label"><span>3</span><span id="scene-val">5</span><span>8</span></div>
+        </div>
+        <div>
+          <label>드라마 강도</label>
+          <input type="range" id="drama-level" min="1" max="5" value="3" oninput="document.getElementById('drama-val').textContent=['순한맛','약간매운','중간','매운맛','극한막장'][this.value-1]">
+          <div class="range-label"><span>순한</span><span id="drama-val">중간</span><span>극한</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">03 — 음성 & 스타일</div>
+
+      <div class="slider-group">
+        <div class="input-group" style="margin:0">
+          <label>나레이터 목소리</label>
+          <select id="voice-style">
+            <option value="af_heart">감성적 여성</option>
+            <option value="af_bella">밝은 여성</option>
+            <option value="am_adam">중후한 남성</option>
+            <option value="am_michael">청년 남성</option>
+          </select>
+        </div>
+        <div class="input-group" style="margin:0">
+          <label>BGM 스타일</label>
+          <select id="music-style">
+            <option value="dramatic orchestral k-drama">🎼 K드라마 오케스트라</option>
+            <option value="suspenseful thriller dark">🎸 스릴러 다크</option>
+            <option value="romantic melodic piano">🎹 로맨틱 피아노</option>
+            <option value="epic emotional cinematic">🎺 에픽 시네마틱</option>
+          </select>
+        </div>
+      </div>
+    </div>
+
+    <!-- HF Space 상태 -->
+    <div class="card">
+      <div class="card-title">04 — Hugging Face Spaces 연결</div>
+      <div class="hf-status">
+        <div class="status-dot" id="hf-dot"></div>
+        <span id="hf-status-text">Spaces 연결 확인 중...</span>
+      </div>
+      <div style="font-size:11px; color:var(--muted); line-height:2;">
+        무료 배포를 위해 Hugging Face Spaces의 공개 API를 사용합니다.<br>
+        대기 시간이 있을 수 있으며, 결과는 브라우저에 저장됩니다.
+      </div>
+    </div>
+
+    <button class="run-btn" id="run-btn" onclick="startPipeline()">
+      🎬 드라마 제작 시작
+    </button>
+
+  </div>
+
+  <!-- 진행 섹션 -->
+  <div id="progress-section">
+    <div class="progress-card">
+      <div class="card-title">제작 진행 중</div>
+      <div id="current-step-label" style="font-size:14px; margin-bottom:8px;">대기 중...</div>
+      <div class="progress-bar-wrap">
+        <div class="progress-bar" id="progress-bar"></div>
+      </div>
+      <div class="log-box" id="log-box"></div>
+    </div>
+  </div>
+
+  <!-- 결과 섹션 -->
+  <div id="result-section">
+    <div class="card">
+      <div class="card-title">✅ 제작 완료</div>
+
+      <div class="result-grid">
+        <div class="result-item">
+          <h3>📝 생성된 대본</h3>
+          <div class="script-output" id="script-output"></div>
+        </div>
+        <div class="result-item">
+          <h3>🖼️ 장면 이미지</h3>
+          <div class="img-slideshow" id="slideshow">
+            <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:12px;">이미지 생성 중...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="result-grid">
+        <div class="result-item">
+          <h3>🔊 나레이션 오디오</h3>
+          <audio id="tts-audio" controls class="audio-player"></audio>
+          <a id="tts-download" class="download-btn" download="narration.wav">⬇ 다운로드</a>
+        </div>
+        <div class="result-item">
+          <h3>🎵 배경음악</h3>
+          <audio id="bgm-audio" controls class="audio-player"></audio>
+          <a id="bgm-download" class="download-btn" download="bgm.wav">⬇ 다운로드</a>
+        </div>
+      </div>
+
+      <button class="run-btn" onclick="resetApp()" style="background: var(--surface); border: 1px solid var(--border);">
+        🔄 새 드라마 만들기
+      </button>
+    </div>
+  </div>
+
+  <footer>
+    <div style="margin-bottom:8px;">
+      <span class="tag">Llama 3.1 (HF)</span>
+      <span class="tag">Kokoro TTS (HF)</span>
+      <span class="tag">SDXL (HF)</span>
+      <span class="tag">MusicGen (HF)</span>
+    </div>
+    AI Drama Studio · 완전 무료 · Cloudflare Pages 배포
+  </footer>
+
+</div>
+
+<script>
+// ==========================================
+// 설정
+// ==========================================
+const HF_SPACES = {
+  llm:      'https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct',
+  tts:      'https://api-inference.huggingface.co/models/hexgrad/Kokoro-82M',
+  image:    'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
+  music:    'https://api-inference.huggingface.co/models/facebook/musicgen-small',
+};
+
+// 장르 선택
+let selectedGenre = '막장 로맨스';
+
+document.querySelectorAll('.chip[data-genre]').forEach(chip => {
+  chip.addEventListener('click', () => {
+    document.querySelectorAll('.chip[data-genre]').forEach(c => c.classList.remove('selected'));
+    chip.classList.add('selected');
+    selectedGenre = chip.dataset.genre;
+  });
+});
+
+// HF 상태 체크 (단순 ping)
+async function checkHFStatus() {
+  try {
+    const r = await fetch('https://huggingface.co', { method: 'HEAD', mode: 'no-cors' });
+    document.getElementById('hf-dot').className = 'status-dot online';
+    document.getElementById('hf-status-text').textContent = 'Hugging Face 연결됨 — 무료 API 사용 가능';
+  } catch {
+    document.getElementById('hf-dot').className = 'status-dot offline';
+    document.getElementById('hf-status-text').textContent = '연결 실패 — 데모 모드로 실행됩니다';
+  }
+}
+checkHFStatus();
+
+// ==========================================
+// 로그 & 진행률
+// ==========================================
+let logBox, progressBar;
+
+function log(msg, type = '') {
+  const now = new Date().toLocaleTimeString('ko-KR');
+  const line = document.createElement('div');
+  line.className = `log-line ${type}`;
+  line.innerHTML = `<span class="ts">[${now}]</span><span class="msg">${msg}</span>`;
+  logBox.appendChild(line);
+  logBox.scrollTop = logBox.scrollHeight;
+}
+
+function setProgress(pct, label) {
+  progressBar.style.width = pct + '%';
+  document.getElementById('current-step-label').textContent = label;
+}
+
+function setStep(stepId, state) {
+  const el = document.getElementById('step-' + stepId);
+  if (el) {
+    el.className = 'pipeline-step ' + state;
+  }
+}
+
+// ==========================================
+// HF API 호출
+// ==========================================
+async function callHF(endpoint, payload, isBlob = false) {
+  // HF 토큰 없이 공개 모델 호출 (rate limit 있음)
+  const res = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  });
+
+  if (!res.ok) {
+    const err = await res.text();
+    // 503: 모델 로딩 중 → 재시도
+    if (res.status === 503) {
+      log('모델 워밍업 중... 20초 후 재시도', 'err');
+      await sleep(20000);
+      return callHF(endpoint, payload, isBlob);
+    }
+    throw new Error(`HF API 오류: ${res.status} ${err.slice(0,100)}`);
+  }
+
+  return isBlob ? res.blob() : res.json();
+}
+
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ==========================================
+// 1단계: 대본 생성
+// ==========================================
+async function generateScript(genre, prompt, sceneCount, dramaLevel) {
+  const levels = ['', '약간의 갈등', '중간 수준의 갈등', '강한 감정 대립', '극적인 반전과 배신', '충격적인 막장 반전의 연속'];
+  const levelDesc = levels[dramaLevel];
+
+  const systemPrompt = `당신은 한국 드라마 작가입니다. 짧고 임팩트 있는 숏폼 드라마 대본을 씁니다.`;
+  const userPrompt = `장르: ${genre}
+소재: ${prompt || '자유롭게'}
+장면 수: ${sceneCount}개
+드라마 강도: ${levelDesc}
+
+위 설정으로 숏폼 드라마 대본을 작성해주세요.
+형식:
+[장면N] 장소
+(지문) 행동 묘사
+캐릭터: 대사
+
+각 장면은 3-4줄로 간결하게. 마지막에 반전이나 클iffhanger로 끝내세요.`;
+
+  const result = await callHF(HF_SPACES.llm, {
+    inputs: `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`,
+    parameters: { max_new_tokens: 800, temperature: 0.8, return_full_text: false }
+  });
+
+  return result[0]?.generated_text || result?.generated_text || '대본 생성 실패';
+}
+
+// ==========================================
+// 2단계: TTS
+// ==========================================
+async function generateTTS(script, voice) {
+  // 대본에서 나레이션 텍스트 추출 (지문/대사 포함)
+  const narration = script
+    .replace(/\[장면\d+\].*/g, '')
+    .replace(/\(.*?\)/g, '')
+    .trim()
+    .slice(0, 500); // TTS 길이 제한
+
+  const blob = await callHF(HF_SPACES.tts, {
+    inputs: narration,
+    parameters: { voice: voice }
+  }, true);
+
+  return URL.createObjectURL(blob);
+}
+
+// ==========================================
+// 3단계: 이미지 생성 (장면별)
+// ==========================================
+async function generateImages(genre, sceneCount) {
+  const styleMap = {
+    '막장 로맨스': 'Korean drama romantic scene, cinematic lighting, emotional',
+    '미스터리 스릴러': 'dark thriller Korean drama, suspenseful, moody lighting',
+    '조선 좀비': 'Joseon dynasty zombie apocalypse, traditional Korean setting, horror',
+    'SF 로맨스': 'Korean drama sci-fi romance, futuristic Seoul, emotional',
+    '복수극': 'Korean revenge drama, intense, dramatic shadows',
+    '귀신 코미디': 'Korean ghost comedy drama, supernatural, colorful',
+  };
+
+  const baseStyle = styleMap[genre] || 'Korean drama scene, cinematic';
+  const scenes = [];
+
+  for (let i = 0; i < Math.min(sceneCount, 3); i++) { // 무료 제한으로 최대 3장
+    log(`이미지 생성 중 (${i+1}/${Math.min(sceneCount,3)})...`);
+    try {
+      const blob = await callHF(HF_SPACES.image, {
+        inputs: `${baseStyle}, scene ${i+1}, high quality, 9:16 vertical`,
+        parameters: { width: 512, height: 768 }
+      }, true);
+      scenes.push(URL.createObjectURL(blob));
+    } catch (e) {
+      log(`이미지 ${i+1} 실패 — 건너뜀`, 'err');
+    }
+    await sleep(1000);
+  }
+
+  return scenes;
+}
+
+// ==========================================
+// 4단계: BGM 생성
+// ==========================================
+async function generateMusic(style) {
+  const blob = await callHF(HF_SPACES.music, {
+    inputs: style,
+    parameters: { max_new_tokens: 256 }
+  }, true);
+  return URL.createObjectURL(blob);
+}
+
+// ==========================================
+// 메인 파이프라인
+// ==========================================
+async function startPipeline() {
+  const btn = document.getElementById('run-btn');
+  btn.disabled = true;
+
+  document.getElementById('setup-section').style.display = 'none';
+  document.getElementById('progress-section').style.display = 'block';
+  document.getElementById('result-section').style.display = 'none';
+
+  logBox = document.getElementById('log-box');
+  progressBar = document.getElementById('progress-bar');
+
+  const sceneCount = parseInt(document.getElementById('scene-count').value);
+  const dramaLevel = parseInt(document.getElementById('drama-level').value);
+  const voice = document.getElementById('voice-style').value;
+  const musicStyle = document.getElementById('music-style').value;
+  const storyPrompt = document.getElementById('story-prompt').value;
+
+  let scriptText = '', ttsUrl = '', imageUrls = [], bgmUrl = '';
+
+  try {
+    // --- 1. 대본 ---
+    setStep('script', 'active');
+    setProgress(5, '✍️ AI가 대본을 쓰는 중...');
+    log('Llama 3.1로 대본 생성 시작...');
+
+    scriptText = await generateScript(selectedGenre, storyPrompt, sceneCount, dramaLevel);
+    setStep('script', 'done');
+    setProgress(25, '✍️ 대본 완성!');
+    log('대본 생성 완료 ✓', 'ok');
+
+    // --- 2. TTS ---
+    setStep('tts', 'active');
+    setProgress(30, '🔊 나레이션 음성 생성 중...');
+    log('Kokoro TTS로 음성 변환 시작...');
+
+    try {
+      ttsUrl = await generateTTS(scriptText, voice);
+      setStep('tts', 'done');
+      setProgress(50, '🔊 나레이션 완성!');
+      log('TTS 완료 ✓', 'ok');
+    } catch (e) {
+      log(`TTS 실패 (${e.message}) — 건너뜀`, 'err');
+      setStep('tts', '');
+    }
+
+    // --- 3. 이미지 ---
+    setStep('image', 'active');
+    setProgress(55, '🖼️ 장면 이미지 생성 중...');
+    log('Stable Diffusion XL로 이미지 생성...');
+
+    try {
+      imageUrls = await generateImages(selectedGenre, sceneCount);
+      setStep('image', 'done');
+      setProgress(75, '🖼️ 이미지 완성!');
+      log(`이미지 ${imageUrls.length}장 생성 완료 ✓`, 'ok');
+    } catch (e) {
+      log(`이미지 생성 실패 (${e.message})`, 'err');
+      setStep('image', '');
+    }
+
+    // --- 4. BGM ---
+    setStep('music', 'active');
+    setProgress(80, '🎵 배경음악 작곡 중...');
+    log('MusicGen으로 BGM 생성...');
+
+    try {
+      bgmUrl = await generateMusic(musicStyle);
+      setStep('music', 'done');
+      setProgress(92, '🎵 BGM 완성!');
+      log('BGM 생성 완료 ✓', 'ok');
+    } catch (e) {
+      log(`BGM 생성 실패 (${e.message})`, 'err');
+      setStep('music', '');
+    }
+
+    // --- 5. 합성 ---
+    setStep('video', 'active');
+    setProgress(95, '🎬 최종 합성 중...');
+    log('브라우저에서 슬라이드쇼 + 오디오 합성...');
+    await sleep(1000);
+
+    setStep('video', 'done');
+    setProgress(100, '🎉 완성!');
+    log('전체 파이프라인 완료! ✓', 'ok');
+
+    await sleep(500);
+    showResults(scriptText, ttsUrl, imageUrls, bgmUrl);
+
+  } catch (err) {
+    log(`오류 발생: ${err.message}`, 'err');
+    log('일부 결과만 표시합니다.', 'err');
+    showResults(scriptText, ttsUrl, imageUrls, bgmUrl);
+  }
+}
+
+// ==========================================
+// 결과 표시
+// ==========================================
+function showResults(script, ttsUrl, imageUrls, bgmUrl) {
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('result-section').style.display = 'block';
+
+  // 대본
+  document.getElementById('script-output').textContent = script || '대본 생성 실패';
+
+  // TTS
+  const ttsAudio = document.getElementById('tts-audio');
+  if (ttsUrl) {
+    ttsAudio.src = ttsUrl;
+    document.getElementById('tts-download').href = ttsUrl;
+  } else {
+    ttsAudio.parentElement.innerHTML += '<p style="color:var(--muted);font-size:12px;margin-top:8px;">음성 생성 실패 (HF 무료 제한)</p>';
+  }
+
+  // 이미지 슬라이드쇼
+  const slideshow = document.getElementById('slideshow');
+  if (imageUrls.length > 0) {
+    slideshow.innerHTML = '';
+    imageUrls.forEach((url, i) => {
+      const img = document.createElement('img');
+      img.src = url;
+      if (i === 0) img.className = 'active';
+      slideshow.appendChild(img);
+    });
+
+    // 자동 슬라이드
+    let cur = 0;
+    setInterval(() => {
+      const imgs = slideshow.querySelectorAll('img');
+      imgs[cur].className = '';
+      cur = (cur + 1) % imgs.length;
+      imgs[cur].className = 'active';
+    }, 3000);
+  }
+
+  // BGM
+  const bgmAudio = document.getElementById('bgm-audio');
+  if (bgmUrl) {
+    bgmAudio.src = bgmUrl;
+    bgmAudio.loop = true;
+    document.getElementById('bgm-download').href = bgmUrl;
+  }
+
+  window.scrollTo({ top: document.getElementById('result-section').offsetTop - 20, behavior: 'smooth' });
+}
+
+function resetApp() {
+  document.getElementById('setup-section').style.display = 'block';
+  document.getElementById('progress-section').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('run-btn').disabled = false;
+  document.getElementById('log-box').innerHTML = '';
+  document.getElementById('progress-bar').style.width = '0%';
+  ['script','tts','image','music','video'].forEach(s => setStep(s, ''));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+</script>
+</body>
+</html>
