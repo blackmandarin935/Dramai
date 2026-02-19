@@ -661,12 +661,6 @@
 // ==========================================
 // 설정
 // ==========================================
-const HF_SPACES = {
-  llm:      'https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct',
-  tts:      'https://api-inference.huggingface.co/models/hexgrad/Kokoro-82M',
-  image:    'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-  music:    'https://api-inference.huggingface.co/models/facebook/musicgen-small',
-};
 
 // 장르 선택
 let selectedGenre = '막장 로맨스';
@@ -679,12 +673,20 @@ document.querySelectorAll('.chip[data-genre]').forEach(chip => {
   });
 });
 
-// HF 상태 체크 (단순 ping)
+// HF 상태 체크 (Worker 통해)
 async function checkHFStatus() {
   try {
-    const r = await fetch('https://huggingface.co', { method: 'HEAD', mode: 'no-cors' });
-    document.getElementById('hf-dot').className = 'status-dot online';
-    document.getElementById('hf-status-text').textContent = 'Hugging Face 연결됨 — 무료 API 사용 가능';
+    const r = await fetch('/api/hf?type=llm', { 
+      method: 'POST', 
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inputs: 'test' })
+    });
+    if (r.ok || r.status === 503) {
+      document.getElementById('hf-dot').className = 'status-dot online';
+      document.getElementById('hf-status-text').textContent = 'Worker 프록시 연결됨 — 무료 API 사용 가능';
+    } else {
+      throw new Error('Failed');
+    }
   } catch {
     document.getElementById('hf-dot').className = 'status-dot offline';
     document.getElementById('hf-status-text').textContent = '연결 실패 — 데모 모드로 실행됩니다';
@@ -719,11 +721,10 @@ function setStep(stepId, state) {
 }
 
 // ==========================================
-// HF API 호출
+// HF API 호출 (Worker 프록시)
 // ==========================================
-async function callHF(endpoint, payload, isBlob = false) {
-  // HF 토큰 없이 공개 모델 호출 (rate limit 있음)
-  const res = await fetch(endpoint, {
+async function callHF(type, payload, isBlob = false) {
+  const res = await fetch(`/api/hf?type=${type}`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(payload),
@@ -731,13 +732,12 @@ async function callHF(endpoint, payload, isBlob = false) {
 
   if (!res.ok) {
     const err = await res.text();
-    // 503: 모델 로딩 중 → 재시도
     if (res.status === 503) {
       log('모델 워밍업 중... 20초 후 재시도', 'err');
       await sleep(20000);
-      return callHF(endpoint, payload, isBlob);
+      return callHF(type, payload, isBlob);
     }
-    throw new Error(`HF API 오류: ${res.status} ${err.slice(0,100)}`);
+    throw new Error(`API 오류: ${res.status} ${err.slice(0,100)}`);
   }
 
   return isBlob ? res.blob() : res.json();
@@ -766,7 +766,7 @@ async function generateScript(genre, prompt, sceneCount, dramaLevel) {
 
 각 장면은 3-4줄로 간결하게. 마지막에 반전이나 클iffhanger로 끝내세요.`;
 
-  const result = await callHF(HF_SPACES.llm, {
+  const result = await callHF('llm', {
     inputs: `<|system|>\n${systemPrompt}\n<|user|>\n${userPrompt}\n<|assistant|>\n`,
     parameters: { max_new_tokens: 800, temperature: 0.8, return_full_text: false }
   });
@@ -785,7 +785,7 @@ async function generateTTS(script, voice) {
     .trim()
     .slice(0, 500); // TTS 길이 제한
 
-  const blob = await callHF(HF_SPACES.tts, {
+  const blob = await callHF('tts', {
     inputs: narration,
     parameters: { voice: voice }
   }, true);
@@ -812,7 +812,7 @@ async function generateImages(genre, sceneCount) {
   for (let i = 0; i < Math.min(sceneCount, 3); i++) { // 무료 제한으로 최대 3장
     log(`이미지 생성 중 (${i+1}/${Math.min(sceneCount,3)})...`);
     try {
-      const blob = await callHF(HF_SPACES.image, {
+      const blob = await callHF('image', {
         inputs: `${baseStyle}, scene ${i+1}, high quality, 9:16 vertical`,
         parameters: { width: 512, height: 768 }
       }, true);
@@ -830,7 +830,7 @@ async function generateImages(genre, sceneCount) {
 // 4단계: BGM 생성
 // ==========================================
 async function generateMusic(style) {
-  const blob = await callHF(HF_SPACES.music, {
+  const blob = await callHF('music', {
     inputs: style,
     parameters: { max_new_tokens: 256 }
   }, true);

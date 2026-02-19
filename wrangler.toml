@@ -4,3 +4,7 @@ compatibility_date = "2024-01-01"
 
 [assets]
 directory = "frontend"
+
+[[kv_namespaces]]
+binding = "CACHE"
+id = "9f0cec49090448908a08f7ce2e76fa28"

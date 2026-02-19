@@ -1,95 +1,53 @@
-# 🎬 AI 드라마 스튜디오 — 완전 무료 배포 가이드
+# 🎬 AI 드라마 스튜디오 — Cloudflare Workers 배포 가이드
 
 ## 아키텍처
 
 ```
-[브라우저] → [Cloudflare Pages] → [Hugging Face API (무료)]
-                                        ├─ Llama 3.1 (대본)
-                                        ├─ Kokoro TTS (음성)
-                                        ├─ SDXL (이미지)
-                                        └─ MusicGen (BGM)
+[브라우저] → [Cloudflare Workers] → [Hugging Face API]
+                    ↓
+               [KV Cache]
 ```
 
-**비용: $0** — 모든 서비스 무료 티어 사용
+**장점:**
+- HF 토큰 서버에 저장 → 노출 방지
+- KV 캐싱 → 같은 요청 재사용 (요청 절약)
+- CORS 문제 해결
+
+**비용: $0**
 
 ---
 
-## 배포 방법 (3가지)
+## 배포 방법
 
-### 방법 1: GitHub + Cloudflare Pages 연동 (추천 ⭐)
+### 1. KV 네임스페이스 생성
 
 ```bash
-# 1. GitHub 레포 만들기
-git init
-git add .
-git commit -m "first commit"
-git remote add origin https://github.com/YOUR_ID/ai-drama-studio.git
-git push -u origin main
-
-# 2. Cloudflare Pages 연결
-# https://pages.cloudflare.com → "새 프로젝트" → GitHub 레포 선택
-# Build 설정:
-#   Framework: None
-#   Build 명령어: (없음)
-#   Build 출력 디렉토리: frontend
+wrangler kv:namespace create CACHE
 ```
 
-### 방법 2: Wrangler CLI 직접 배포
+출력된 ID를 `wrangler.toml`의 `id`에 입력:
+
+```toml
+[[kv_namespaces]]
+binding = "CACHE"
+id = "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+```
+
+### 2. HF 토큰 설정 (선택, 무료)
 
 ```bash
-# Wrangler 설치
-npm install -g wrangler
-
-# 로그인
-wrangler login
-
-# 배포
-wrangler pages deploy frontend --project-name ai-drama-studio
+# https://huggingface.co/settings/tokens 에서 토큰 발급
+wrangler secret put HF_TOKEN
+# 프롬프트에 토큰 입력
 ```
 
-### 방법 3: 드래그 앤 드롭 (가장 간단)
+토큰 없이도 작동하지만, 있으면 요청 한도 증가
 
-1. https://pages.cloudflare.com 접속
-2. "프로젝트 만들기" → "직접 업로드"
-3. `frontend/` 폴더를 드래그
+### 3. 배포
 
----
-
-## 무료 제한 사항
-
-| 서비스 | 무료 한도 | 제한 초과시 |
-|--------|---------|-----------|
-| Cloudflare Pages | 무제한 요청, 500 빌드/월 | 없음 (너무 관대) |
-| HF Inference API | ~1000 req/일 (토큰 없이) | 429 에러 → 대기 |
-| HF (토큰 있을 때) | 더 많은 요청 | - |
-
-### HF 토큰으로 제한 늘리기 (선택, 무료)
-
+```bash
+wrangler deploy
 ```
-1. https://huggingface.co/settings/tokens 에서 토큰 발급 (무료)
-2. index.html 상단에 추가:
-   const HF_TOKEN = 'hf_YOUR_TOKEN_HERE';
-3. callHF 함수의 headers에 추가:
-   'Authorization': `Bearer ${HF_TOKEN}`
-```
-
----
-
-## 성능 최적화 팁
-
-- **대본 생성**: Llama 3.1 8B 대신 Mistral 7B가 더 빠름
-- **TTS**: Kokoro-82M은 작고 빠른 모델 (품질도 좋음)
-- **이미지**: SDXL 대신 `stabilityai/sdxl-turbo` 사용 시 4배 빠름
-- **BGM**: `facebook/musicgen-small` → `facebook/musicgen-medium` 으로 품질 업
-
----
-
-## 고도화 아이디어
-
-1. **Cloudflare Workers + KV** 로 생성 결과 캐싱
-2. **R2 Storage** 로 생성된 미디어 파일 저장 (무료 10GB)
-3. **HF Spaces Gradio** 에 백엔드 올려서 더 안정적인 API로 사용
-4. **ffmpeg.wasm** 으로 브라우저에서 진짜 영상 합성
 
 ---
 
@@ -97,8 +55,30 @@ wrangler pages deploy frontend --project-name ai-drama-studio
 
 ```
 ai-drama-studio/
+├── src/
+│   └── index.js       ← Worker 진입점 (프록시 + 캐싱)
 ├── frontend/
-│   └── index.html      ← 전체 앱 (단일 파일)
-├── wrangler.toml        ← CF 배포 설정
-└── DEPLOY.md            ← 이 문서
+│   └── index.html     ← 프론트엔드
+├── wrangler.toml      ← Workers 설정
+└── DEPLOY.md
+```
+
+---
+
+## 무료 제한
+
+| 서비스 | 무료 한도 |
+|--------|----------|
+| Cloudflare Workers | 100,000 요청/일 |
+| KV 읽기 | 100,000/일 |
+| KV 쓰기 | 1,000/일 |
+| HF API (토큰 없음) | ~1,000 요청/일 |
+| HF API (토큰 있음) | 더 많음 |
+
+---
+
+## 로컬 개발
+
+```bash
+wrangler dev
 ```
