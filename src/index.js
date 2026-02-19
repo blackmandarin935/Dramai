@@ -1,8 +1,8 @@
 const HF_ENDPOINTS = {
-  llm: 'https://api-inference.huggingface.co/models/meta-llama/Llama-3.1-8B-Instruct',
-  tts: 'https://api-inference.huggingface.co/models/hexgrad/Kokoro-82M',
-  image: 'https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0',
-  music: 'https://api-inference.huggingface.co/models/facebook/musicgen-small',
+  llm: 'https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.1-8B-Instruct',
+  tts: 'https://router.huggingface.co/hf-inference/models/hexgrad/Kokoro-82M',
+  image: 'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0',
+  music: 'https://router.huggingface.co/hf-inference/models/facebook/musicgen-small',
 };
 
 async function hashKey(str) {
