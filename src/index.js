@@ -1,5 +1,5 @@
 const HF_ENDPOINTS = {
-  llm: 'https://router.huggingface.co/hf-inference/models/meta-llama/Llama-3.1-8B-Instruct',
+  llm: 'https://router.huggingface.co/hf-inference/models/TinyLlama/TinyLlama-1.1B-Chat-v1.0',
   tts: 'https://router.huggingface.co/hf-inference/models/hexgrad/Kokoro-82M',
   image: 'https://router.huggingface.co/hf-inference/models/stabilityai/stable-diffusion-xl-base-1.0',
   music: 'https://router.huggingface.co/hf-inference/models/facebook/musicgen-small',
